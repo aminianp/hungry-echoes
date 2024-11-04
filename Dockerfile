@@ -1,5 +1,5 @@
 # Use the official Go image as a build environment
-FROM golang:1.19 AS build
+FROM golang:1.22 AS build
 
 # Set the working directory inside the container
 WORKDIR /app

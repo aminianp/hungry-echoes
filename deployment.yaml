@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hungry-echoes
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hungry-echoes
+  template:
+    metadata:
+      labels:
+        app: hungry-echoes
+    spec:
+      containers:
+      - name: hungry-echoes
+        image: gcr.io/tailscale-tests-and-demos/hungry-echoes:latest
+        ports:
+        - containerPort: 8080
