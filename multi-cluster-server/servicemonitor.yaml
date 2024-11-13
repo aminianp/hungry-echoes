@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hungry-echoes
+  namespace: monitoring
+  labels:
+    release: prometheus-operator  # Ensure Prometheus selects this ServiceMonitor
+spec:
+  selector:
+    matchLabels:
+      app: hungry-echoes
+  endpoints:
+    - port: metrics             # Scrapes metrics from the `metrics` port
+      interval: 15s             # Scrape interval
