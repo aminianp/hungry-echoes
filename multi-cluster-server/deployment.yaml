@@ -18,6 +18,7 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
+        - containerPort: 8081  # Expose metrics port
         env:
         - name: DB_HOST
           value: "postgres.default.svc.cluster.local"
@@ -38,16 +39,10 @@ spec:
             secretKeyRef:
               name: postgres-secret
               key: POSTGRES_DB
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: hungry-echoes
-spec:
-  selector:
-    app: hungry-echoes
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 8080
-  type: LoadBalancer
+        resources:                # Add this section for resource management
+          requests:
+            memory: "256Mi"       # Minimum amount of memory the container requires
+            cpu: "250m"           # Minimum amount of CPU the container requires
+          limits:
+            memory: "512Mi"       # Maximum amount of memory the container can use
+            cpu: "500m"           # Maximum amount of CPU the container can use
