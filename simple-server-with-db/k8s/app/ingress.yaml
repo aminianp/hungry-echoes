@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hungry-echoes-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # Could add additional useful annotations:
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # kubernetes.io/tls-acme: "true"  # If using cert-manager
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: hungryechoes.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hungry-echoes
+            port:
+              number: 80
+  # Could add TLS configuration:
+  # tls:
+  # - hosts:
+  #   - hungryechoes.com
+  #   secretName: hungryechoes-tls

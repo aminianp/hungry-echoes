@@ -1,0 +1,34 @@
+# network/network-policy.yaml
+
+# Network policy to restrict pod communication
+# Only allows necessary traffic between components
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hungry-echoes-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: hungry-echoes
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow ingress controller traffic
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: controller
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow database access
+    - from:
+        - podSelector:
+            matchLabels:
+              component: database
+      ports:
+        - protocol: TCP
+          port: 8080

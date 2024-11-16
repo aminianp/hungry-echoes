@@ -1,0 +1,93 @@
+# app/deployment.yaml
+
+# Main application deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hungry-echoes
+  labels:
+    app: hungry-echoes
+    component: web
+spec:
+  replicas: 2  # Two replicas for high availability
+  selector:
+    matchLabels:
+      app: hungry-echoes
+  template:
+    metadata:
+      labels:
+        app: hungry-echoes
+        component: web
+    spec:
+      containers:
+        - name: hungry-echoes
+          image: gcr.io/tailscale-tests-and-demos/hungry-echoes:latest
+          imagePullPolicy: Always
+          # Conservative resource limits for demo environment
+          resources:
+            requests:
+              cpu: "50m"     # 0.05 CPU core
+              memory: "128Mi"
+            limits:
+              cpu: "100m"    # 0.1 CPU core
+              memory: "256Mi"
+          ports:
+            - containerPort: 8080
+              name: http
+          # Environment variables for database connection
+          env:
+            - name: DB_HOST
+              value: "postgres.default.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+          # Health checks for the application
+          readinessProbe:
+            httpGet:
+              path: /?message=ready   # Changed from health
+              port: 8080             # Changed to number instead of name
+            initialDelaySeconds: 10   # Increased delay
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /?message=alive   # Changed from health
+              port: 8080             # Changed to number instead of name
+            initialDelaySeconds: 20   # Increased delay
+            periodSeconds: 15
+            failureThreshold: 3
+
+---
+# app/service.yaml
+
+# Internal service for the application
+# Used by ingress to route traffic to pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: hungry-echoes
+  labels:
+    app: hungry-echoes
+    component: web
+spec:
+  selector:
+    app: hungry-echoes
+  ports:
+    - protocol: TCP
+      port: 80          # Port the service listens on
+      targetPort: 8080  # Port the application listens on
+  type: ClusterIP      # Internal-only service, accessed via ingress

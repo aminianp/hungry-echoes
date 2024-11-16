@@ -1,0 +1,19 @@
+# app/service.yaml
+
+# Internal service for the application
+# Used by ingress to route traffic to pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: hungry-echoes
+  labels:
+    app: hungry-echoes
+    component: web
+spec:
+  selector:
+    app: hungry-echoes
+  ports:
+    - protocol: TCP
+      port: 80          # Port the service listens on
+      targetPort: 8080  # Port the application listens on
+  type: ClusterIP      # Internal-only service, accessed via ingress
