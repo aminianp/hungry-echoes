@@ -6,42 +6,38 @@ import (
 	"net/http"
 	"os"
 
-	_ "github.com/lib/pq" // PostgreSQL driver
+	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Global database variable
-var db *sql.DB
+// Port configurations
+const (
+	AppPort     = ":8080"
+	MetricsPort = ":8081"
+)
 
-// Prometheus metrics
+// Global variables
 var (
-	requestCount = prometheus.NewCounter(
+	db *sql.DB
+
+	// Prometheus metrics
+	requestCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "hungry_echoes_request_count",
-			Help: "Total number of requests processed",
+			Name: "hungry_echoes_requests_total",
+			Help: "Total number of requests to the echo server",
 		},
+		[]string{"status"}, // Label for success/error
 	)
-	errorCount = prometheus.NewCounter(
+
+	dbErrorCounter = promauto.NewCounter(
 		prometheus.CounterOpts{
-			Name: "hungry_echoes_error_count",
-			Help: "Total number of errors encountered",
-		},
-	)
-	dbErrorCount = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "hungry_echoes_db_error_count",
+			Name: "hungry_echoes_db_errors_total",
 			Help: "Total number of database errors",
 		},
 	)
 )
-
-func init() {
-	// Register Prometheus metrics
-	prometheus.MustRegister(requestCount)
-	prometheus.MustRegister(errorCount)
-	prometheus.MustRegister(dbErrorCount)
-}
 
 // Initialize the database connection
 func initDB() error {
@@ -56,20 +52,14 @@ func initDB() error {
 
 	var err error
 	db, err = sql.Open("postgres", connStr)
-	if err != nil {
-		errorCount.Inc() // Increment error count for Prometheus
-		fmt.Println("Error initializing database:", err)
-	}
 	return err
 }
 
 // Handle incoming HTTP requests
 func handleRequest(w http.ResponseWriter, r *http.Request) {
-	requestCount.Inc() // Increment request count
-
 	message := r.URL.Query().Get("message")
 	if message == "" {
-		errorCount.Inc() // Increment error count for missing parameter
+		requestCounter.WithLabelValues("error").Inc()
 		http.Error(w, "Query parameter 'message' is required", http.StatusBadRequest)
 		return
 	}
@@ -78,23 +68,19 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	// Select a random phrase from the database
 	err := db.QueryRow("SELECT sentence FROM corporate.jargons ORDER BY RANDOM() LIMIT 1").Scan(&corporatePhrase)
 	if err != nil {
-		dbErrorCount.Inc() // Increment DB error count for Prometheus
-		errorCount.Inc()    // Increment error count for Prometheus
+		requestCounter.WithLabelValues("error").Inc()
+		dbErrorCounter.Inc() // Increment DB error counter
 		http.Error(w, "Failed to retrieve phrase", http.StatusInternalServerError)
-		fmt.Println("Database query error:", err) // Log the error
 		return
 	}
 
 	// Format the response with the retrieved phrase, remote address, and message
 	response := fmt.Sprintf(corporatePhrase, r.RemoteAddr, message)
 	fmt.Fprintln(w, response)
+	requestCounter.WithLabelValues("success").Inc()
 }
 
 func main() {
-	// Define the main server port and metrics port
-	appPort := ":8080"
-	metricsPort := ":8081"
-
 	// Initialize the database connection
 	err := initDB()
 	if err != nil {
@@ -103,26 +89,25 @@ func main() {
 	}
 	defer db.Close()
 
-	// Set up the handler for HTTP requests on the main server
-	http.HandleFunc("/", handleRequest)
+	// Create a new mux for the main application
+	mainMux := http.NewServeMux()
+	mainMux.HandleFunc("/", handleRequest)
 
-	// Run the main application server in a goroutine
-	go func() {
-		fmt.Println("HTTP echo server started on port", appPort)
-		if err := http.ListenAndServe(appPort, nil); err != nil {
-			errorCount.Inc() // Increment error count if server fails to start
-			fmt.Println("Error starting server:", err)
-		}
-	}()
-
-	// Set up the metrics server with the /metrics endpoint
+	// Create a new mux for metrics
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.Handler())
 
-	// Start the metrics server on a separate port
-	fmt.Println("Metrics server started on port", metricsPort)
-	if err := http.ListenAndServe(metricsPort, metricsMux); err != nil {
-		errorCount.Inc() // Increment error count if metrics server fails to start
-		fmt.Println("Error starting metrics server:", err)
+	// Start the metrics server on a different port
+	go func() {
+		fmt.Printf("Metrics server started on %s\n", MetricsPort)
+		if err := http.ListenAndServe(MetricsPort, metricsMux); err != nil {
+			fmt.Printf("Error starting metrics server on %s: %v\n", MetricsPort, err)
+		}
+	}()
+
+	// Start the main application server
+	fmt.Printf("HTTP echo server started on %s\n", AppPort)
+	if err := http.ListenAndServe(AppPort, mainMux); err != nil {
+		fmt.Printf("Error starting main server on %s: %v\n", AppPort, err)
 	}
 }

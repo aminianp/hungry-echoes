@@ -1,12 +1,12 @@
-# app/ingress.yaml
-
+# app/metrics-ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: hungry-echoes-ingress
+  name: metrics-ingress
   namespace: default
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
     # Could add additional useful annotations:
     # nginx.ingress.kubernetes.io/ssl-redirect: "true"
     # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
@@ -14,7 +14,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: hungryechoes.com
+  - host: metrics.hungryechoes.com
     http:
       paths:
       - path: /
@@ -23,9 +23,9 @@ spec:
           service:
             name: hungry-echoes
             port:
-              number: 80
+              number: 8081
   # Could add TLS configuration:
   # tls:
   # - hosts:
-  #   - hungryechoes.com
-  #   secretName: hungryechoes-tls
+  #   - metrics.hungryechoes.com
+  #   secretName: metrics-hungryechoes-tls

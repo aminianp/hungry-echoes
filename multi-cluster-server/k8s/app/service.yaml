@@ -1,0 +1,22 @@
+# app/service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hungry-echoes
+  labels:
+    app: hungry-echoes
+    component: web
+spec:
+  selector:
+    app: hungry-echoes
+  ports:
+    - protocol: TCP
+      port: 80          # Port the service listens on
+      targetPort: 8080  # Port the application listens on
+      name: http
+    - protocol: TCP
+      port: 8081        # Metrics port
+      targetPort: 8081  # Port the metrics server listens on
+      name: metrics
+  type: ClusterIP      # Internal-only service, accessed via ingress
