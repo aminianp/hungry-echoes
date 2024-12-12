@@ -10,3 +10,14 @@
     - terraform init -upgrade
     - terraform plan
     - terraform apply
+
+## Steps to provision the monitoring cluster
+1. Go to ./infra/monitoring-cluster-infra and run the terraform commands to provision the monitoring cluster:
+    - terraform init -upgrade
+    - terraform plan
+    - terraform apply
+2. Once the cluster is fully provisioned, go to ./k8s
+3. Run kubectl apply -f ./monitoring
+
+## Verify DNS settings
+Verify that DNS records in the domain registrar is pointing to the right Google name servers (they can change from one run to the next).

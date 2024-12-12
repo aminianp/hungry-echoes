@@ -13,7 +13,7 @@ variable "cluster_name" {
 variable "cluster_region" {
   description = "Region for the monitoring cluster"
   type        = string
-  default     = "us-west2"
+  default     = "us-west4"
 }
 
 variable "network_name" {

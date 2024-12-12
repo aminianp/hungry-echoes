@@ -17,7 +17,7 @@ resource "google_project_service" "services" {
   service = each.key
 
   disable_dependent_services = false
-  disable_on_destroy        = false
+  disable_on_destroy         = false
 }
 
 # Get existing VPC information
