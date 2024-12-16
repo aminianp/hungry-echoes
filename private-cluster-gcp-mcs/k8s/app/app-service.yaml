@@ -1,0 +1,18 @@
+# app/app-service.yaml
+# Service definition for app service
+apiVersion: v1
+kind: Service
+metadata:
+  name: hungry-echoes
+  labels:
+    app: hungry-echoes
+    component: web
+spec:
+  selector:
+    app: hungry-echoes
+  ports:
+    - protocol: TCP
+      port: 80          # Port the service listens on
+      targetPort: 8080  # Port the application listens on
+      name: http
+  type: ClusterIP      # Internal-only service, accessed via ingress
