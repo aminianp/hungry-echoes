@@ -1,0 +1,26 @@
+# monitoring/config.yaml
+# Create namespace first
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+
+---
+# Then ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: 'hungry-echoes'
+        static_configs:
+          - targets: ['prometheus-egress.monitoring.svc.cluster.local:8081']

@@ -1,0 +1,49 @@
+# settings.yaml
+
+# Project Configuration
+project:
+  id: "tailscale-tests-and-demos"
+
+# Network Configuration
+network:
+  name: "hungry-echoes-vpc"
+  # App Cluster Subnet Ranges
+  app_cluster:
+    subnet_cidr: "10.0.0.0/20"
+    pods_cidr: "10.100.0.0/16"
+    services_cidr: "10.101.0.0/20"
+  # Monitoring Cluster Subnet Ranges
+  monitoring_cluster:
+    subnet_cidr: "10.1.0.0/20"
+    pods_cidr: "10.102.0.0/16"
+    services_cidr: "10.103.0.0/20"
+  # Health check ranges for GCP
+  health_check_ranges:
+    - "35.191.0.0/16"
+    - "130.211.0.0/22"  
+
+# App Cluster Configuration
+app_cluster:
+  name: "hungry-echoes"
+  region: "us-west3"
+  zone: "us-west3-a"  
+
+# App Cluster Configuration
+monitoring_cluster:
+  name: "hungry-monitoring"
+  region: "us-west4"
+  zone: "us-west4-a"
+
+# Generic Node Pool Configuration
+node_pool:
+  node_count: 2
+  node_version: "1.30.5-gke.1699000"
+  image_type: "COS_CONTAINERD"
+  disk_size_gb: 50
+  disk_type: "pd-standard"
+  #App Cluster Specific Node Settings
+  app_cluster:
+    machine_type: "e2-small"
+  #App Cluster Specific Node Settings
+  monitoring_cluster:
+    machine_type: "e2-standard-2"

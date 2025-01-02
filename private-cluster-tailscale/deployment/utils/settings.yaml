@@ -1,0 +1,31 @@
+# Global settings for all components
+
+# GCP project settings
+project:
+  id: "tailscale-tests-and-demos"
+
+# App cluster settings
+app_cluster:
+  name: "hungry-echoes"
+  zone: "us-west3-a"
+
+# Monitoring cluster settings
+monitoring_cluster:
+  name: "hungry-monitoring"
+  zone: "us-west4-a"
+
+# Network settings
+network:
+  name: "hungry-echoes-vpc"
+  app_subnet:
+    cidr: "10.0.0.0/20"
+    pods_cidr: "10.100.0.0/16"
+    services_cidr: "10.101.0.0/20"
+
+  monitoring_subnet:
+    cidr: "10.1.0.0/20"
+    pods_cidr: "10.102.0.0/16"
+    services_cidr: "10.103.0.0/20"
+
+# Network settings
+#dns:

@@ -1,0 +1,2 @@
+config:
+  gcp:project: tailscale-tests-and-demos

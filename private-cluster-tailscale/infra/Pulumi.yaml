@@ -1,0 +1,11 @@
+name: hungry-echoes
+description: Hungry Echoes is a multi-cluster echo service that I did to learn more about k8s, Terraform, Pulumi and multi-cluster networking as part of my job at Tailscale. The files here are designed to provision the infrastructure for both my clusters. 
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: python

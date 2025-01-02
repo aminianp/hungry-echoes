@@ -1,0 +1,113 @@
+# postgres/statefulset.yaml
+
+# Headless service for PostgreSQL StatefulSet
+# Used for stable DNS names for each pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    component: database
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None  # Headless service - no load balancing, just DNS
+  selector:
+    app: postgres
+
+---
+# StatefulSet for PostgreSQL
+# Used instead of Deployment to maintain stable network identities and persistent storage
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    component: database
+spec:
+  serviceName: "postgres"  # References the headless service above
+  replicas: 1             # Single replica for demo purposes
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:latest
+          ports:
+            - containerPort: 5432
+          # Resource limits for demo environment
+          # Keeps costs low while ensuring basic functionality
+          resources:
+            requests:
+              cpu: "100m"    # 0.1 CPU core
+              memory: "256Mi"
+            limits:
+              cpu: "200m"    # 0.2 CPU core
+              memory: "512Mi"
+          env:
+            # Database credentials from Kubernetes secrets
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+          # Health checks for PostgreSQL
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - he-user
+                - -d
+                - phrases
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - he-user
+                - -d
+                - phrases
+            initialDelaySeconds: 30 #Give the pod time to start up 
+            periodSeconds: 10
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: postgres-init-scripts
+  # Persistent storage configuration
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
