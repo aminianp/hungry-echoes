@@ -1,0 +1,39 @@
+# monitoring/config.yaml
+# Create namespace first
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: monitoring
+#   labels:
+#     name: monitoring
+
+# ---
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: prometheus-config
+#   namespace: monitoring
+# data:
+#   prometheus.yml: |
+#     global:
+#       scrape_interval: 15s
+#       evaluation_interval: 15s
+
+#     scrape_configs:
+#       # Original configuration:
+#       # - job_name: 'hungry-echoes'
+#       #   static_configs:
+#       #     - targets: ['prometheus-egress.monitoring.svc.cluster.local:8081']
+      
+#       - job_name: 'hungry-echoes'
+#         dns_sd_configs:
+#           - names:
+#               - 'default-metrics-ingress-ingress.tail81089.ts.net'
+#             type: 'A'
+#             port: 8081
+#         metrics_path: /metrics
+#         scheme: http
+#         scrape_timeout: 10s        # Add timeout
+#         relabel_configs:           # Add relabeling for better metric labels
+#           - source_labels: [__address__]
+#             target_label: instance

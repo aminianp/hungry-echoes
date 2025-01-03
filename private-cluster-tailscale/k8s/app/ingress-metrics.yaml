@@ -1,15 +1,35 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+# Trying the load balancer servive approach since Ingress seem to require TLS
+apiVersion: v1
+kind: Service
 metadata:
-  name: metrics-ingress
+  name: metrics-ingress-svc
   namespace: default
-  annotations:
-    # Add this to get a Tailscale-issued certificate
-    tailscale.com/tags: "tag:k8s"
 spec:
-  ingressClassName: tailscale
-  defaultBackend:
-    service:
-      name: hungry-echoes
-      port:
-        number: 8081
+  type: LoadBalancer           
+  loadBalancerClass: tailscale
+  ports:
+    - port: 8081
+      name: metrics
+      targetPort: 8081
+  selector:
+    app: hungry-echoes
+
+# Initial approach was using an Ingress proxy! However, I reverted to using a LoadBalancer service because
+# Ingress proxies currently REQUIRE a TLS (443). The original ingress below for future reference. 
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: metrics-ingress
+#   namespace: default
+#   annotations:
+#     # Add this to get a Tailscale-issued certificate
+#     tailscale.com/tags: "tag:k8s"
+#     tailscale.com/port: "8081"  # Add this to specify the port
+# spec:
+#   ingressClassName: tailscale
+#   defaultBackend:
+#     service:
+#       name: hungry-echoes
+#       port:
+#         number: 8081
+
