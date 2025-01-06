@@ -1,4 +1,4 @@
-# # /monitoring/egress-metrics.yaml
+# monitoring/egress-metrics.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,27 +6,10 @@ metadata:
   namespace: monitoring
   annotations:
     tailscale.com/tailnet-fqdn: default-metrics-ingress-svc.tail81089.ts.net
-    # tailscale.com/tailnet-ip: 100.80.131.109
-    # tailscale.com/hostname: default-metrics-ingress-svc
 spec:
   ports:
     - port: 8081
       protocol: TCP
       targetPort: 8081
-  externalName: placeholder   # any value - will be overwritten by operator
+  externalName: unused   # any value - will be overwritten by operator
   type: ExternalName
-
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: prometheus-egress
-#   namespace: monitoring
-#   annotations:
-#     tailscale.com/proxy: "true"
-#     tailscale.com/fqdn: "default-metrics-ingress-svc.tail81089.ts.net"
-# spec:
-#   ports:
-#     - port: 8081
-#       protocol: TCP
-#       targetPort: 8081
-#   type: ClusterIP
