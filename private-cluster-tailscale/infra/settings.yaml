@@ -7,10 +7,15 @@ project:
 # Pulumi Provider Configurations
 pulumi_provider:
   network_provider_name: "main-network-provider"
-  app_cluster_provider_name: "app-cluster--provider"
+  firewall_cluster_internal_allow_rule_provider_name: "cluster-inernal-allow-all-rule"
+  firewall_health_check_allow_rule_provider_name: "health-check-allow-rule"
+  firewall_metrics_allow_rule_provider_name: "metrics-allow-rule"
+  app_subnet_provider_name: "app-cluster-subnet-provider"
+  monitoring_subnet_provider_name: "monitoring-cluster-subnet-provider"
+  app_cluster_provider_name: "app-cluster-provider"
   app_cluster_k8s_provider_name: "app-cluster-k8s-provider"
   app_addons_provider_name: "app-addons-provider"
-  monitoring_cluster_provider_name: "monitoring-cluster--provider"
+  monitoring_cluster_provider_name: "monitoring-cluster-provider"
   monitoring_cluster_k8s_provider_name: "monitoring-cluster-k8s-provider"
   monitoring_addons_provider_name: "monitoring-addons-provider"
 

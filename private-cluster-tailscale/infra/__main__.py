@@ -81,7 +81,7 @@ def main():
                 # Add proper deletion strategy
                 delete_before_replace=True,
             )
-        network = Network(config['pulumi_provider']['network_provider_name'], opts=custom_opts)
+        network = Network(config, opts=custom_opts)
 
         # Step 3: Create app cluster using network configuration
         custom_opts =pulumi.ResourceOptions(

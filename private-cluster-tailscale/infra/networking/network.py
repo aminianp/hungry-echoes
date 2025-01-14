@@ -1,4 +1,5 @@
 # networking/network.py
+from typing import Any, Dict
 from pulumi import ComponentResource, ResourceOptions, export
 from pulumi_gcp import compute
 import yaml
@@ -12,17 +13,15 @@ class Network(ComponentResource):
     - Firewall rules
     """
     
-    def __init__(self, name: str, opts: ResourceOptions = None):
-        super().__init__('hungry-echoes:network', name, None, opts)
+    def __init__(self, config: Dict[str, Any], opts: ResourceOptions = None):
+        super().__init__('hungry-echoes:network', config['network']['name'], None, opts)
 
-        # Load network configuration
-        config_path = os.path.join(os.path.dirname(__file__), '../settings.yaml')
-        with open(config_path, 'r') as f:
-            self.config = yaml.safe_load(f)
+        # Set the config object
+        self.config = config
 
         # Create shared VPC
         self.vpc = compute.Network(
-            f"{name}-vpc",
+            resource_name=self.config['pulumi_provider']['network_provider_name'],
             name=self.config['network']['name'],
             auto_create_subnetworks=False,
             opts=ResourceOptions(parent=self)
@@ -37,8 +36,8 @@ class Network(ComponentResource):
         # Create subnets for both clusters
         # Note: Regions are hardcoded for demo purposes. In production,
         # you might want to make these configurable in settings.yaml
-        self.app_subnet = self._create_app_subnet("us-west3")
-        self.monitoring_subnet = self._create_monitoring_subnet("us-west4")
+        self.app_subnet = self._create_app_subnet()
+        self.monitoring_subnet = self._create_monitoring_subnet()
 
         # Export network information for other components
         export('vpc_id', self.vpc.id)
@@ -60,8 +59,9 @@ class Network(ComponentResource):
             self.config['network']['monitoring_cluster']['services_cidr']
         ]
 
+
         self.allow_internal = compute.Firewall(
-            "allow-internal",
+            self.config['pulumi_provider']['firewall_cluster_internal_allow_rule_provider_name'],
             network=self.vpc.name,
             allows=[
                 {"protocol": "icmp"},
@@ -77,7 +77,7 @@ class Network(ComponentResource):
         
         # Create firewall rule for health checks
         self.allow_health_checks = compute.Firewall(
-            "allow-health-checks",
+            self.config['pulumi_provider']['firewall_health_check_allow_rule_provider_name'],
             network=self.vpc.name,
             allows=[
                 {
@@ -91,7 +91,7 @@ class Network(ComponentResource):
 
         # Create firewall rule for metrics
         self.allow_metrics = compute.Firewall(
-            "allow-metrics",
+            self.config['pulumi_provider']['firewall_metrics_allow_rule_provider_name'],
             network=self.vpc.name,
             allows=[
                 {
@@ -108,12 +108,13 @@ class Network(ComponentResource):
             opts=ResourceOptions(parent=self)
         )
 
-    def _create_app_subnet(self, region: str):
+    def _create_app_subnet(self):
         """Create subnet for app cluster in the specified region."""
+
         return compute.Subnetwork(
-            "app-subnet",
+            self.config['pulumi_provider']['app_subnet_provider_name'],
             network=self.vpc.id,
-            region=region,
+            region=self.config['app_cluster']['region'],
             ip_cidr_range=self.config['network']['app_cluster']['subnet_cidr'],
             secondary_ip_ranges=[
                 {
@@ -134,12 +135,12 @@ class Network(ComponentResource):
             opts=ResourceOptions(parent=self)
         )
 
-    def _create_monitoring_subnet(self, region: str):
+    def _create_monitoring_subnet(self):
         """Create subnet for monitoring cluster in the specified region."""
         return compute.Subnetwork(
-            "monitoring-subnet",
+            self.config['pulumi_provider']['monitoring_subnet_provider_name'],
             network=self.vpc.id,
-            region=region,
+            region=self.config['monitoring_cluster']['region'],
             ip_cidr_range=self.config['network']['monitoring_cluster']['subnet_cidr'],
             secondary_ip_ranges=[
                 {
@@ -151,6 +152,7 @@ class Network(ComponentResource):
                     "ip_cidr_range": self.config['network']['monitoring_cluster']['services_cidr']
                 }
             ],
+            # Enable flow logs for monitoring
             log_config={
                 "aggregation_interval": "INTERVAL_5_SEC",
                 "flow_sampling": 0.5,
