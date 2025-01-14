@@ -2,8 +2,16 @@
 import yaml
 from typing import Dict, Any
 
-def create_kubeconfig(cluster_name: str, endpoint: str, cluster_ca: str, 
-                     project_id: str, zone: str) -> str:
+def create_kubeconfig_from_promise(args, project_id, zone):
+    return create_kubeconfig(
+                    cluster_name=args[0],
+                    endpoint=args[1],
+                    cluster_ca=args[2]["cluster_ca_certificate"],
+                    project_id=project_id,
+                    zone=zone
+                )
+
+def create_kubeconfig(cluster_name: str, endpoint: str, cluster_ca: str, project_id: str, zone: str) -> str:
     """
     Creates a kubeconfig string for GKE cluster authentication using the new
     gke-gcloud-auth-plugin.

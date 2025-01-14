@@ -19,40 +19,12 @@ spec:
         - protocol: TCP
           port: 8080  # Application port
     # Allow metrics traffic only from Tailscale
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              # kubernetes.io/metadata.name: tailscale
-               kubernetes.io/metadata.name: monitoring
-        - podSelector:
-            matchLabels:
-              # app: tailscale-metrics-proxy
-              app: prometheus
+    - from: []
+        # TODO Create a tighter policy to allow allow traffic from certain namespaces and/or pods (like Tailscale + debug)
+        # - namespaceSelector:
+        #     matchLabels:
+        #       kubernetes.io/metadata.name: tailscale
+
       ports:
         - protocol: TCP
           port: 8081  # Metrics port
-# ---
-# Additional network policy for Tailscale proxy
-# apiVersion: networking.k8s.io/v1
-# kind: NetworkPolicy
-# metadata:
-#   name: tailscale-metrics-policy
-#   namespace: tailscale
-# spec:
-#   podSelector:
-#     matchLabels:
-#       app: tailscale-metrics-proxy
-#   policyTypes:
-#     - Ingress
-#     - Egress
-#   ingress:
-#     - from:
-#         - namespaceSelector:
-#             matchLabels:
-#               kubernetes.io/metadata.name: tailscale
-#   egress:
-#     - to:
-#         - namespaceSelector: {}
-#       ports:
-#         - protocol: TCP
-#           port: 8081

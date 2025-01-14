@@ -15,54 +15,41 @@ from app_cluster.app_cluster import AppCluster
 from app_cluster.app_cluster_add_ons import AppClusterAddons
 from monitoring_cluster.monitoring_cluster import MonitoringCluster
 from monitoring_cluster.monitoring_cluster_add_ons import MonitoringClusterAddons
-from utils.kubernetes import create_kubeconfig
+from utils.kubernetes import create_kubeconfig_from_promise
 
 # Custom exception for initialization failures
 class InitializationError(Exception):
     pass
 
-def create_gcp_provider():
+def create_gcp_provider(config, timeout="120s", gcp_provider_name="gcp-provider"):
     """
     Creates and configures the GCP provider with proper error handling.
     Returns tuple of (gcp_provider, project_id)
     """
-
-    # Load global config
-    config_path = os.path.join(os.path.dirname(__file__), './settings.yaml')
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-
     try:
         # Configure the GCP provider with project settings
-        gcp_provider = GCPProvider("gcp",
+        gcp_provider = GCPProvider(gcp_provider_name,
             project=config['project']['id'],
             # Add retry configurations for API calls
-            request_timeout="120s",  # Increase timeout for API calls
+            request_timeout=timeout,  # Increase timeout for API calls
         )
         return gcp_provider
     except Exception as e:
         raise InitializationError(f"Failed to create GCP provider: {str(e)}")
 
-def create_k8s_provider(k8s_provider_name, app_cluster, project_id, zone):
+def create_kube_provider(app_cluster, project_id, zone, kube_provider_name):
     """
     Creates the Kubernetes provider with proper error handling and retry logic.
     """
+    
     try:
-        return K8sProvider(k8s_provider_name,
-            kubeconfig=pulumi.Output.all(
+        kubeconfig = pulumi.Output.all(
                 app_cluster.cluster.name, 
                 app_cluster.cluster.endpoint, 
                 app_cluster.cluster.master_auth
-            ).apply(
-                lambda args: create_kubeconfig(
-                    cluster_name=args[0],
-                    endpoint=args[1],
-                    cluster_ca=args[2]["cluster_ca_certificate"],
-                    project_id=project_id,
-                    zone=zone
-                )
-            ),
-        )
+            ).apply(lambda args: create_kubeconfig_from_promise(args, project_id, zone))
+        return K8sProvider(kube_provider_name, kubeconfig)
+
     except Exception as e:
         raise InitializationError(f"Failed to create Kubernetes provider: {str(e)}")
 
@@ -71,17 +58,19 @@ def main():
     Main deployment logic with improved error handling and update strategies.
     """
     # Load global config
-    config_path = os.path.join(os.path.dirname(__file__), './settings.yaml')
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), './settings.yaml')
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except Exception as e:
+        raise InitializationError(f"Failed to open the settings file at {str(config_path)}. Additional info: {str(e)}")
 
     try:
         # Step 1: Create the GCP provider
-        gcp_provider = create_gcp_provider()
+        gcp_provider = create_gcp_provider(config)
 
         # Step 2: Create shared network infrastructure
-        network = Network("main-network",
-            opts=pulumi.ResourceOptions(
+        custom_opts = pulumi.ResourceOptions(
                 provider=gcp_provider,
                 # Add custom timeouts for network operations
                 custom_timeouts=pulumi.CustomTimeouts(
@@ -92,14 +81,10 @@ def main():
                 # Add proper deletion strategy
                 delete_before_replace=True,
             )
-        )
+        network = Network(config['pulumi_provider']['network_provider_name'], opts=custom_opts)
 
         # Step 3: Create app cluster using network configuration
-        app_cluster = AppCluster(
-            "app-cluster",
-            vpc_id=network.vpc.id,
-            subnet_id=network.app_subnet.id,
-            opts=pulumi.ResourceOptions(
+        custom_opts =pulumi.ResourceOptions(
                 provider=gcp_provider,
                 depends_on=[network],
                 # Add custom timeouts for cluster operations
@@ -110,21 +95,24 @@ def main():
                 ),
                 # Ensure proper cleanup on failure
                 delete_before_replace=True,
-            )
+            ) 
+        app_cluster = AppCluster(
+            config['pulumi_provider']['app_cluster_provider_name'],
+            vpc_id=network.vpc.id,
+            subnet_id=network.app_subnet.id,
+            opts=custom_opts
         )
 
         # Step 4: Create k8s provider with proper error handling
-        app_k8s_provider = create_k8s_provider(
-            "app-k8s-provider",
+        app_k8s_provider = create_kube_provider(
             app_cluster,
             config['project']['id'],
-            config['app_cluster']['zone']
+            config['app_cluster']['zone'],
+            config['pulumi_provider']['app_cluster_k8s_provider_name']
         )
 
         # Step 5: Install cluster add-ons with improved dependency management
-        app_addons = AppClusterAddons(
-            "app-addons",
-            opts=pulumi.ResourceOptions(
+        custom_opts = pulumi.ResourceOptions(
                 provider=app_k8s_provider,
                 depends_on=[network, app_cluster],
                 # Add custom timeouts for add-on operations
@@ -138,14 +126,13 @@ def main():
                 # Add ignore_changes for specific fields that cause unnecessary updates
                 ignore_changes=["metadata.annotations", "metadata.labels"]
             )
+        app_addons = AppClusterAddons(
+            config['pulumi_provider']['app_addons_provider_name'],
+            opts=custom_opts
         )
 
         # Step 6: Create monitoring cluster with proper error handling
-        monitoring_cluster = MonitoringCluster(
-            "monitoring-cluster",
-            vpc_id=network.vpc.id,
-            subnet_id=network.monitoring_subnet.id,
-            opts=pulumi.ResourceOptions(
+        custom_opts = pulumi.ResourceOptions(
                 provider=gcp_provider,
                 depends_on=[network],
                 # Add custom timeouts
@@ -156,20 +143,25 @@ def main():
                 ),
                 # Ensure proper cleanup
                 delete_before_replace=True,
-            )
+            ) 
+        monitoring_cluster = MonitoringCluster(
+            config['pulumi_provider']['monitoring_cluster_provider_name'],
+            vpc_id=network.vpc.id,
+            subnet_id=network.monitoring_subnet.id,
+            opts = custom_opts
         )
 
         # Step 7: Create Kubernetes provider for monitoring cluster
-        monitoring_k8s_provider = create_k8s_provider(
-            "monitoring-k8s-provider",
+        monitoring_k8s_provider = create_kube_provider(
             monitoring_cluster,
             config['project']['id'],
-            config['monitoring_cluster']['zone']
+            config['monitoring_cluster']['zone'],
+            config['pulumi_provider']['monitoring_cluster_k8s_provider_name']
         )
 
         # Step 8: Install monitoring cluster add-ons (Prometheus Stack)
         monitoring_addons = MonitoringClusterAddons(
-            "monitoring-addons",
+            config['pulumi_provider']['monitoring_addons_provider_name'],
             opts=pulumi.ResourceOptions(
                 provider=monitoring_k8s_provider,
                 depends_on=[network, monitoring_cluster],

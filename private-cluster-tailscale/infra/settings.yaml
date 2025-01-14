@@ -4,6 +4,16 @@
 project:
   id: "tailscale-tests-and-demos"
 
+# Pulumi Provider Configurations
+pulumi_provider:
+  network_provider_name: "main-network-provider"
+  app_cluster_provider_name: "app-cluster--provider"
+  app_cluster_k8s_provider_name: "app-cluster-k8s-provider"
+  app_addons_provider_name: "app-addons-provider"
+  monitoring_cluster_provider_name: "monitoring-cluster--provider"
+  monitoring_cluster_k8s_provider_name: "monitoring-cluster-k8s-provider"
+  monitoring_addons_provider_name: "monitoring-addons-provider"
+
 # Network Configuration
 network:
   name: "hungry-echoes-vpc"
